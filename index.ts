@@ -29,15 +29,15 @@ const _analytics_context_config = {
     },
     location: function(): Record<string, any> {
         return { country: _cookie("geo"), ...JSON.parse(localStorage.currentLocation || "{}") }
-    },
+    }
 }
 
 const _analytics_integration_config = {
     "Google Analytics": function (): Record<string, any> {
-        let str = _cookie("_ga");
-        str? str = str.split('.').slice(-2).join('.') : undefined
+        let cid = _cookie("_ga");
+        cid = cid? cid.split('.').slice(-2).join('.') : undefined
         return {
-            clientId: str,
+            clientId: cid,
             gclid: _analytics_session.data.campaign.gclid
         }
     },
@@ -116,7 +116,7 @@ function _session(config: Record<string, any>, storage: Storage): Session {
                 let s = "";
                 for (const i in keys) {
                     s = query.get(keys[i]);
-                    if (s == null || s == "") s = undefined;
+                    if (!s || s == "") continue;
                     out[keys[i]] = s;
                 }
                 return out;
@@ -131,17 +131,25 @@ function _session(config: Record<string, any>, storage: Storage): Session {
     return <Session>session
 }
 
-function _context(session: Session): Context {
+function _context(config: Record<string, () => any>, session: Session): Context {
     let context: Partial<Context> = {}
     context.session = session
     // set properties defined in context config
-    for (let prop in _analytics_context_config) {
-        context[prop] = _analytics_context_config[prop]()
+    for (const prop in config) {
+        context[prop] = config[prop]()
     }
     return <Context>context
 }
 
-function _enrich(context: Context, payload): void {
+function _integrations(config: Record<string, () => Record<string, any>>): Record<string, Record<string, any>> {
+    let out = {}
+    for (const integration in config) {
+        out[integration] = config[integration]()
+    }
+    return out
+}
+
+function _enrich(context: Context, payload: Record<string, any>): void {
     // check and update user
     if (!context.user) {
         const analytics = window["analytics"]
@@ -161,7 +169,7 @@ function _enrich(context: Context, payload): void {
 
 
 let _analytics_session = _session(_analytics_session_config, localStorage)
-let _analytics_context = _context(_analytics_session)
+let _analytics_context = _context(_analytics_context_config, _analytics_session)
 
 function _register(analytics: SegmentAnalytics) {
     //@ts-ignore
@@ -186,14 +194,11 @@ function _register(analytics: SegmentAnalytics) {
         _enrich(_analytics_context, payload)
 
         // loop through integration config and set properties
-        let tmp = {}
-        for (const name in _analytics_integration_config) {
-            tmp[name] = _analytics_integration_config[name]()
-        }
+        const tmp = _integrations(_analytics_integration_config)
 
         // set both context.integrations and integrations, just to be safe
-        payload.obj.context.integrations = {...payload.obj.context.integrations, ... tmp}
-        payload.obj.integrations = {...payload.obj.context.integrations, ... tmp}
+        payload.obj.context.integrations = {...payload.obj.context.integrations, ...tmp}
+        payload.obj.integrations = {...payload.obj.context.integrations, ...tmp}
         next(payload)
     })
 

@@ -17,7 +17,3 @@ The middleware is easily configurable:
 Maintenance:
 -
 This project is currently under active maintenance. Pull requests will be accepted by clients with a known installation.
-
-Licence:
--
-This project is under 

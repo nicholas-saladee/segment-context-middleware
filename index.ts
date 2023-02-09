@@ -94,7 +94,7 @@ function _session(config: Record<string, any>, storage: Storage): Session {
     // check storage for session data
     const str = storage.getItem(config.session_data_key || "session_data")
     // if result is not empty, parse json
-    if (str != "") {
+    if (str && str != "") {
         session = JSON.parse(str);
     }
 

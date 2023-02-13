@@ -100,7 +100,7 @@ function _session(config: Record<string, any>, storage: Storage): Session {
 
     const now = Date.now()
     // if session is undefined or expired, generate new session
-    if (!session || session.expires < now) {
+    if (!session || (now - session.expires) <= 0) {
         session = {}
         session.id = now.toString() + '.' + (Math.random() + 1).toString(36).substring(6);
         session.start = now;
